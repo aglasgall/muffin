@@ -72,7 +72,7 @@ void monitor_put(char c)
   u8int attributeByte = PACK_ATTRS(backColor,foreColor);
 
   // attr byte shifted into a word for the vga bios
-  u8int attribute = attributeByte << 8;
+  u16int attribute = attributeByte << 8;
 
   // crash early in the case of a bad pointer
   u16int *location = 0;
