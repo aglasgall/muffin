@@ -133,3 +133,36 @@ void monitor_write(char *c)
   }
 
 }
+
+void monitor_write_hex(u32int num)
+{
+  // 11 = '0x' + 8 bytes for number  + terminator
+  char tmp[11];
+  char buf[11];
+  char *ptr = buf;
+
+  int i = 0;
+  int mask = 15;
+  int shift = 4;
+
+  static const char digits[16] = "0123456789ABCDEF";
+  /* generate the representation backwards */
+  do {
+    tmp[i++] = digits[((unsigned char)num) & mask];
+    num >>= shift;
+  } while(num);
+
+  /* '0x' prefix */
+  *ptr = '0';
+  ++ptr;
+  *ptr = 'x';
+  ++ptr;
+
+  while(--i >= 0) {
+    *ptr = tmp[i];
+    ++ptr;
+  }
+  *ptr = '\0';
+
+  monitor_write(buf);
+}
