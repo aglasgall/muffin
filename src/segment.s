@@ -1,5 +1,6 @@
 	[BITS 32]		; 32-bit instructions
 	[GLOBAL gdt_flush] 	; make gdt_flush callable from C
+	[GLOBAL idt_flush] 	; make idt_flush callable from C	
 
 gdt_flush:
 	mov eax, [esp+4]	; pointer to new gdt is in esp+4
@@ -14,3 +15,9 @@ gdt_flush:
 	jmp 0x08:.flush		; code segment is at gdtr+8
 .flush:
 	ret
+
+idt_flush:
+	mov eax, [esp+4] 	; new idt pointer is in esp+4
+	lidt [eax]		; load idt
+	ret
+	
