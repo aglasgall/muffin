@@ -57,3 +57,5 @@ TAGS
 *.BACKUP.*
 *.BASE.*
 *.orig
+
+*.o
