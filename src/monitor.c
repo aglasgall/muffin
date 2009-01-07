@@ -166,3 +166,16 @@ void monitor_write_hex(u32int num)
 
   monitor_write(buf);
 }
+
+void panic(char *message, char *file, int line) {
+  asm volatile("cli");
+  monitor_write("\nKernel panic: ");
+  monitor_write(message);
+  monitor_write(" at ");
+  monitor_write(file);
+  monitor_write(":");
+  monitor_write_hex(line);
+
+  //now spin so we can debug
+  while(1) {}
+}

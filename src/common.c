@@ -23,3 +23,12 @@ u16int inw(u16int port)
   return ret;
 }
 
+void *memset(void *s, int c, size_t count)
+{
+  char *ptr = s;
+  
+  while (count--) {
+    *ptr++ = c;
+  }
+  return s;
+}

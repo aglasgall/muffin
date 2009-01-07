@@ -3,6 +3,8 @@
 
 #include "common.h"
 
+#define PANIC(message) panic(message,__FILE__,__LINE__)
+
 /* write a single character to the screen */
 void monitor_put(char c);
 
@@ -14,5 +16,7 @@ void monitor_clear();
 void monitor_write (char* c);
 
 void monitor_write_hex(u32int num);
+
+void panic(char* message, char *file, int line);
 
 #endif

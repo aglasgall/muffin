@@ -9,13 +9,14 @@ int main(struct multiboot *mboot_ptr)
   init_descriptor_tables();
 
   monitor_clear();
-  monitor_write("Hello, world!\n");
+
+  initialize_paging();
+  monitor_write("Hello, paged world!\n");
   monitor_write_hex(0xDEADBEEF);
   monitor_put('\n');
-  asm volatile ("int $0x3");
-  asm volatile ("int $0x4");
-  init_timer(50);
-  asm volatile ("sti");
+
+  u32int *ptr = (u32int*)0xA0000000;
+  u32int do_page_fault = *ptr;
 
   return 0xDEADBABA;
 }

@@ -1,5 +1,6 @@
 #include "common.h"
 #include "descriptor_tables.h"
+#include "isr.h"
 
 #define LIMIT 0xFFFFFFFF
 
@@ -18,11 +19,16 @@ gdt_ptr_t gdt_ptr = {0};
 idt_entry_t idt_entries[256] = {{0}};
 idt_ptr_t idt_ptr = {0}; 
 
+// extern in handler table so we can zero it
+extern isr_t interrupt_handlers[];
+
 
 void init_descriptor_tables()
 {
   init_gdt();
   init_idt();
+  memset(&interrupt_handlers, 0, sizeof(isr_t)*256);
+
 }
 
 static void init_gdt()
