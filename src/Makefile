@@ -1,4 +1,4 @@
-SOURCES=boot.o main.o monitor.o common.o descriptor_tables.o segment.o interrupt.o isr.o
+SOURCES=boot.o main.o monitor.o common.o interrupt.o descriptor_tables.o segment.o isr.o timer.o
 
 CFLAGS= -m32 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -Wall -std=gnu99 -g -O0
 LDFLAGS=-Tlink.ld -melf_i386
