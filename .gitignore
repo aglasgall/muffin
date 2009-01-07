@@ -51,6 +51,10 @@ nohup.out
 
 hostname.yml
 TAGS
+GTAGS
+GRTAGS
+GPATH
+GSYMS
 
 *.LOCAL.*
 *.REMOTE.*
@@ -59,3 +63,4 @@ TAGS
 *.orig
 
 *.o
+
