@@ -43,7 +43,9 @@ void switch_page_directory(page_directory_t *new);
 // get a pointer to the page `address' lies in, creating the page's table
 //  if make == 1 and the table doesn't exist yet
 page_t *get_page(u32int address, int make, page_directory_t *dir);
-
+// map in and free a page
+void alloc_frame(page_t *page, int is_kernel, int is_writeable);
+void free_frame(page_t *page);
 // page fault handler
 void page_fault(registers_t regs);
 

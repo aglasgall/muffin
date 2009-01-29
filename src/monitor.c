@@ -125,7 +125,7 @@ void monitor_clear()
 
 }
 
-void monitor_write(char *c)
+void monitor_write(const char *c)
 {
   int i = 0;
   while(c[i]) {
@@ -167,7 +167,7 @@ void monitor_write_hex(u32int num)
   monitor_write(buf);
 }
 
-void panic(char *message, char *file, int line) {
+void panic(const char *message, const char *file, u32int line) {
   asm volatile("cli");
   monitor_write("\nKernel panic: ");
   monitor_write(message);
@@ -175,6 +175,21 @@ void panic(char *message, char *file, int line) {
   monitor_write(file);
   monitor_write(":");
   monitor_write_hex(line);
+  monitor_put('\n');
+  //now spin so we can debug
+  while(1) {}
+}
+
+void panic_assert(const char *file, u32int line, const char* desc) {
+  asm volatile("cli");
+  monitor_write("\nASSERTION FAILED ( ");
+  monitor_write(desc);
+  monitor_write(") at ");
+
+  monitor_write(file);
+  monitor_write(":");
+  monitor_write_hex(line);
+  monitor_put('\n');
 
   //now spin so we can debug
   while(1) {}

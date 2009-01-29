@@ -12,6 +12,7 @@ page_directory_t* kernel_directory = 0;
 
 // defined in kheap.c
 extern u32int placement_address;
+extern heap_t *kheap;
 
 #define INDEX_FROM_BIT(a) ((a)/(8*4))
 #define OFFSET_FROM_BIT(a) ((a)%(8*4))
@@ -109,18 +110,36 @@ void initialize_paging()
   memset(kernel_directory,0,sizeof(page_directory_t));
   current_directory = kernel_directory;
 
+  // map pages for kernel heap
+  u32int i = 0;
+  page_t *page = 0;
+  for(i = KHEAP_START; i < KHEAP_START+KHEAP_INITIAL_SIZE; i += PAGE_SIZE) {
+    page = get_page(i,1,kernel_directory);
+  } 
+  
   // identity map all of the memory we've allocated so far
   // so we can use it once we've enabled paging
-
-  int i = 0;
-  while(i < placement_address) {
-    alloc_frame(get_page(i,1,kernel_directory),0,0);
+  i = 0;
+  while(i <= placement_address) {
+    page = get_page(i,1,kernel_directory);
+    alloc_frame(page,0,0);
     i += PAGE_SIZE;
   }
+
+  // now allocate the pages we mapped earlier for the heap
+  for(i = KHEAP_START; i < KHEAP_START+KHEAP_INITIAL_SIZE; i += PAGE_SIZE) {
+    page = get_page(i,1,kernel_directory);
+    alloc_frame(page,0,0);
+  }
+
   // register page fault handler
   register_interrupt_handler(14,page_fault);
   // load page diretectory into cr3 and enable paging bit in cr0
   switch_page_directory(kernel_directory);
+
+  // we've enabled paging, now create a heap!
+  kheap = create_heap(KHEAP_START, KHEAP_START + KHEAP_INITIAL_SIZE, 0xCFFFF000, 0, 0);
+
   monitor_write("Paging enabled!\n");
 }
 
