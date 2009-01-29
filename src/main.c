@@ -3,6 +3,7 @@
 #include "timer.h"
 #include "kheap.h"
 #include "paging.h"
+#include "multiboot.h"
 
 int main(struct multiboot *mboot_ptr)
 {
