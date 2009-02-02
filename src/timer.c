@@ -2,6 +2,7 @@
 #include "isr.h"
 #include "monitor.h"
 #include "common.h"
+#include "task.h"
 
 #define PIT_FREQ 1193180
 #define TIMER_COMMAND 0x43
@@ -12,9 +13,7 @@ u32int tick = 0;
 static void timer_callback(registers_t regs)
 {
   tick++;
-  monitor_write("Tick: ");
-  monitor_write_hex(tick);
-  monitor_put('\n');
+  switch_task();
 }
 
 void init_timer(u32int frequency)

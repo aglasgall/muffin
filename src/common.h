@@ -16,6 +16,7 @@ u8int inb(u16int port);
 u16int inw(u16int port);
 
 void *memset(void *s, int c, size_t count);
+void *memcpy(void *dest, void *src, size_t count);
 
 #endif
 

@@ -1,6 +1,6 @@
 	;; 
 	;; boot.s - kernel start location + multiboot header
-	;;
+	;; -*- asm-mode -*-
 	
 	;; constants for mboot descriptor structure
 	MBOOT_PAGE_ALIGN	equ	1<<0		; load kernel at a page boundary
@@ -34,6 +34,7 @@ mboot:
 	[EXTERN main] 		; main is defined in C
 
 start:
+	push esp 		; save the initial stack pointer
 	push ebx 		; bootloader puts a ptr to mboot information structure in ebx
 
 	;; kick off kernel loading

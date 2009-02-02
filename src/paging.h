@@ -40,6 +40,9 @@ void initialize_paging();
 // load a page directory into CR3
 void switch_page_directory(page_directory_t *new);
 
+// clone a page directory
+page_directory_t *clone_directory(page_directory_t *src);
+
 // get a pointer to the page `address' lies in, creating the page's table
 //  if make == 1 and the table doesn't exist yet
 page_t *get_page(u32int address, int make, page_directory_t *dir);

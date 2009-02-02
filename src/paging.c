@@ -14,6 +14,9 @@ page_directory_t* kernel_directory = 0;
 extern u32int placement_address;
 extern heap_t *kheap;
 
+// defined in process.s
+void copy_page_physical(u32int src, u32int dest);
+
 #define INDEX_FROM_BIT(a) ((a)/(8*4))
 #define OFFSET_FROM_BIT(a) ((a)%(8*4))
 
@@ -64,6 +67,7 @@ static u32int first_frame()
            }
        }
    }
+   return -1;
 } 
 
 void alloc_frame(page_t *page, int is_kernel, int is_writeable)
@@ -94,6 +98,67 @@ void free_frame(page_t *page)
   page->frame = 0;
 }
 
+static page_table_t *clone_table(page_table_t *src, u32int *physAddr)
+{
+  // allocate a new table
+  page_table_t *table = (page_table_t*)kmalloc_ap(sizeof(page_table_t),physAddr);
+  memset(table,0,sizeof(page_table_t));
+  
+  int i = 0;
+  for(i = 0; i < 1024; ++i) {
+    // ignore unmapped pages (THIS WILL CHANGE)
+    if(!src->pages[i].frame) {
+      continue;
+    }
+
+    alloc_frame(&table->pages[i], 0, 0);
+
+    if (src->pages[i].present) table->pages[i].present = 1;
+    if (src->pages[i].rw) table->pages[i].rw = 1;
+    if (src->pages[i].user) table->pages[i].user = 1;
+    if (src->pages[i].accessed) table->pages[i].accessed = 1;
+    if (src->pages[i].dirty) table->pages[i].dirty = 1;
+
+    // copy the data in the physical page
+    copy_page_physical(src->pages[i].frame*PAGE_SIZE, table->pages[i].frame*PAGE_SIZE);
+  }
+  return table;
+}
+
+page_directory_t *clone_directory(page_directory_t *src)
+{
+  u32int phys = 0;
+  // make a new directory and get its physical address
+  page_directory_t *dir = (page_directory_t*)kmalloc_ap(sizeof(page_directory_t), &phys);
+  memset(dir,0,sizeof(page_directory_t));
+
+  // get the offset of tablesPhysical from the start of dir
+  u32int offset = (u32int)dir->tablesPhysical - (u32int)dir;
+  dir->physicalAddr = phys+offset;
+
+  // copy the page tables
+  int i = 0;
+  for(i = 0; i < 1024; ++i) {
+    // skip empty tables
+    if(!src->tables[i]) {
+      continue;
+    }
+    // link instead of copying the kernel pages
+    // (copy the address. we're in the kernel, so we can use the same ptr)
+    if(kernel_directory->tables[i] == src->tables[i]) {
+      dir->tables[i] = src->tables[i];
+      dir->tablesPhysical[i] = src->tablesPhysical[i];
+    } else {
+      // copy table
+      u32int phys = 0;
+      dir->tables[i] = clone_table(src->tables[i], &phys);
+      // as in get_page
+      dir->tablesPhysical[i] = phys | 0x07;
+    }
+  }
+  return dir;
+}
+
 void initialize_paging()
 {
   // assuming for now that we have 16M of memory - we'll fix this
@@ -108,7 +173,7 @@ void initialize_paging()
   // allocate a page directory
   kernel_directory = (page_directory_t*)kmalloc_a(sizeof(page_directory_t));
   memset(kernel_directory,0,sizeof(page_directory_t));
-  current_directory = kernel_directory;
+  kernel_directory->physicalAddr = (u32int)kernel_directory->tablesPhysical;
 
   // map pages for kernel heap
   u32int i = 0;
@@ -120,7 +185,7 @@ void initialize_paging()
   // identity map all of the memory we've allocated so far
   // so we can use it once we've enabled paging
   i = 0;
-  while(i <= placement_address) {
+  while(i <= placement_address+0x1000) {
     page = get_page(i,1,kernel_directory);
     alloc_frame(page,0,0);
     i += PAGE_SIZE;
@@ -139,16 +204,22 @@ void initialize_paging()
 
   // we've enabled paging, now create a heap!
   kheap = create_heap(KHEAP_START, KHEAP_START + KHEAP_INITIAL_SIZE, 0xCFFFF000, 0, 0);
+  monitor_write("About to enable paging\n");
+  current_directory = clone_directory(kernel_directory);
+  switch_page_directory(current_directory);
 
   monitor_write("Paging enabled!\n");
 }
 
 void switch_page_directory(page_directory_t *dir)
 {
+  u32int cr0 = 0;
+  // disable paging
   current_directory = dir;
   // load page directory pointer into cr3
-  asm volatile("mov %0, %%cr3"::"r"(&dir->tablesPhysical));
-  u32int cr0 = 0;
+
+  asm volatile("mov %0, %%cr3"::"r"(dir->physicalAddr));
+
   asm volatile("mov %%cr0, %0": "=r"(cr0));
   cr0 |= 0x80000000; // turn paging bit on
   asm volatile ("mov %0, %%cr0":: "r"(cr0));

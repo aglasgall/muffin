@@ -1,4 +1,4 @@
-SOURCES=boot.o main.o monitor.o common.o interrupt.o descriptor_tables.o segment.o isr.o timer.o kheap.o paging.o ordered_array.o
+SOURCES=boot.o main.o monitor.o common.o interrupt.o descriptor_tables.o segment.o isr.o timer.o kheap.o paging.o ordered_array.o process.o task.o
 
 CFLAGS= -m32 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -Wall -std=gnu99 -g -O0
 LDFLAGS=-Tlink.ld -melf_i386
@@ -7,7 +7,7 @@ ASFLAGS=-felf
 all: $(SOURCES) link
 
 clean:
-	rm *.o kernel
+	rm -f *.o kernel
 
 link:
 	ld $(LDFLAGS) -o kernel $(SOURCES)

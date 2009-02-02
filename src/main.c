@@ -4,11 +4,15 @@
 #include "kheap.h"
 #include "paging.h"
 #include "multiboot.h"
+#include "task.h"
 
-int main(struct multiboot *mboot_ptr)
+u32int initial_esp;
+
+int main(struct multiboot *mboot_ptr, u32int initial_stack)
 {
   // initialization code goes here
-  
+  initial_esp = initial_stack;
+
   init_descriptor_tables();
 
   monitor_clear();
@@ -34,9 +38,20 @@ int main(struct multiboot *mboot_ptr)
   u32int d = kmalloc(12);
   monitor_write(", d: ");
   monitor_write_hex(d); 
-  
-  //  u32int *ptr = (u32int*)0xA0000000;
-  //  u32int do_page_fault = *ptr;
+  monitor_write("\n");
+  // start multitasking
+  initialize_tasking();
+  asm volatile("sti");
+  init_timer(50);
+  pid_t ret = fork();
+  pid_t my_pid = getpid();
+  monitor_write("fork() returned: ");
+  monitor_write_hex(ret);
+  monitor_write(", and getpid() returned ");
+  monitor_write_hex(my_pid);
+  monitor_write("\n============================================================================\n");
+  /* u32int *ptr = (u32int*)0xA0000000; */
+  /* u32int do_page_fault = *ptr; */
 
   return 0xDEADBABA;
 }

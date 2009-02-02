@@ -32,3 +32,13 @@ void *memset(void *s, int c, size_t count)
   }
   return s;
 }
+
+void *memcpy(void *dest, void *src, size_t count)
+{
+  asm volatile("mov %0, %%esi" : : "r"(src));
+  asm volatile("mov %0, %%edi" : : "r"(dest));
+  asm volatile("mov %0, %%ecx" : : "r"(count/4));
+  asm volatile("rep movsd");
+  return dest;
+    
+}
