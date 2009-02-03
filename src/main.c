@@ -6,7 +6,7 @@
 #include "multiboot.h"
 #include "task.h"
 
-u32int initial_esp;
+u32int initial_esp = 0;
 
 int main(struct multiboot *mboot_ptr, u32int initial_stack)
 {
@@ -15,6 +15,7 @@ int main(struct multiboot *mboot_ptr, u32int initial_stack)
 
   init_descriptor_tables();
 
+  monitor_init();
   monitor_clear();
   u32int a = kmalloc(8);
   initialize_paging();
@@ -42,14 +43,25 @@ int main(struct multiboot *mboot_ptr, u32int initial_stack)
   // start multitasking
   initialize_tasking();
   asm volatile("sti");
-  init_timer(50);
+   init_timer(50);
   pid_t ret = fork();
   pid_t my_pid = getpid();
+  monitor_lock();
   monitor_write("fork() returned: ");
   monitor_write_hex(ret);
+  switch_task();
   monitor_write(", and getpid() returned ");
   monitor_write_hex(my_pid);
   monitor_write("\n============================================================================\n");
+  monitor_release();
+  /* while(1) { */
+  /*   monitor_lock(); */
+  /*   monitor_write("Hello from process "); */
+  /*   monitor_write_hex(my_pid); */
+  /*   switch_task(); */
+  /*   monitor_write(" !\n"); */
+  /*   monitor_release(); */
+  /* } */
   /* u32int *ptr = (u32int*)0xA0000000; */
   /* u32int do_page_fault = *ptr; */
 
