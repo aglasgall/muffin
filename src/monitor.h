@@ -18,6 +18,12 @@ void monitor_write (char* c);
 
 void monitor_write_hex(u32int num);
 
+/* locking for video memory now that we have multitasking */
+/* spins */
+void monitor_lock();
+
+void monitor_release();
+
 void panic(const char* message, const char *file, u32int line);
 
 void panic_assert(const char* file, u32int line, const char* desc);

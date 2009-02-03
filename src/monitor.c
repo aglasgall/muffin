@@ -1,4 +1,5 @@
 #include "common.h"
+#include "spinlock.h"
 
 #define VIDEO_MEMORY_BASE 0xB8000
 #define SET_CURSOR_HIGH_BYTE 14
@@ -26,6 +27,12 @@ u16int *video_memory = (u16int *)VIDEO_MEMORY_BASE;
 /* cursor position, start at top left */
 u16int cursor_x = 0;
 u16int cursor_y = 0;
+
+spinlock_t video_memory_lock;
+
+void monitor_init() {
+  spinlock_init(&video_memory_lock);
+}
 
 static void move_cursor()
 {
@@ -109,6 +116,15 @@ void monitor_put(char c)
   move_cursor();
 }
 
+void monitor_lock() 
+{
+  spinlock_acquire(&video_memory_lock);
+}
+
+void monitor_release() 
+{
+  spinlock_release(&video_memory_lock);
+}
 void monitor_clear()
 {
   // blank character = 'white' space on black bg
@@ -131,7 +147,6 @@ void monitor_write(const char *c)
   while(c[i]) {
     monitor_put(c[i++]);
   }
-
 }
 
 void monitor_write_hex(u32int num)
