@@ -25,23 +25,16 @@ struct multiboot_module {
 
 typedef struct multiboot_module multiboot_module_t;
 
-struct multiboot_mmap_area {
-  u32int base_addr_low;
-  u32int base_addr_high;
-  u32int length_low;
-  u32int length_high;
+
+struct multiboot_memory_map_entry {
+  u32int size;
+  u64int base_addr;
+// You can also use: unsigned long long int base_addr; if supported.
+  u64int length;
+// You can also use: unsigned long long int length; if supported.
   u32int type;
 } __attribute__((packed));
-
-typedef struct multiboot_mmap_area multiboot_mmap_area_t;
-
-
-struct mmap_size_area_pair {
-  u32int size;
-  multiboot_mmap_area_t *area;
-} __attribute__((packed));
-
-typedef struct multiboot_mmap_size_area_pair multiboot_mmap_size_area_pair_t;
+typedef struct multiboot_memory_map_entry multiboot_mmap_entry_t;
 
 
 struct multiboot {
@@ -61,7 +54,7 @@ struct multiboot {
   u32int addr;
   u32int shndx;
   u32int mmap_length;
-  multiboot_mmap_area_t *mmap_addr;
+  multiboot_mmap_entry_t *mmap_addr;
   // this information is useless, so forget it.
   // cylinders, heads, and sectors?!
   u32int drives_length;

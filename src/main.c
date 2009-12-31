@@ -7,12 +7,13 @@
 #include "task.h"
 
 u32int initial_esp = 0;
+struct multiboot *mboot_header = 0;
 
 int main(struct multiboot *mboot_ptr, u32int initial_stack)
 {
   // initialization code goes here
   initial_esp = initial_stack;
-
+  mboot_header = mboot_ptr;
   init_descriptor_tables();
 
   monitor_init();

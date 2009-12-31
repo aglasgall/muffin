@@ -1,11 +1,14 @@
 #include "paging.h"
 #include "monitor.h"
 #include "kheap.h"
+#include "multiboot.h"
 
 #define PAGE_SIZE 0x1000
 
 static u32int *frames = 0;
-static u32int nframes;
+// set = mmio space, unset = real memory
+static u32int *memory_map = 0;
+static u32int nframes = 0;
 
 page_directory_t* current_directory = 0;
 page_directory_t* kernel_directory = 0;
@@ -14,6 +17,9 @@ page_directory_t* kernel_directory = 0;
 extern u32int placement_address;
 extern heap_t *kheap;
 
+// defined in main.c
+extern struct multiboot *mboot_header;
+
 // defined in process.s
 void copy_page_physical(u32int src, u32int dest);
 
@@ -21,31 +27,47 @@ void copy_page_physical(u32int src, u32int dest);
 #define OFFSET_FROM_BIT(a) ((a)%(8*4))
 
 
-// set a bit in the frames bitset
-static void set_frame(u32int frame_addr)
+static void set_frame_in_map(u32int frame_addr,u32int *map)
 {
   u32int frame = frame_addr/PAGE_SIZE;
   u32int idx = INDEX_FROM_BIT(frame);
   u32int off = OFFSET_FROM_BIT(frame);
-  frames[idx] |= (0x1 << off);
+  map[idx] |= (0x1 << off);
+}
+
+// set a bit in the frames bitset
+static void set_frame(u32int frame_addr)
+{
+  set_frame_in_map(frame_addr,frames);
+}
+
+static void clear_frame_in_map(u32int frame_addr,u32int *map)
+{
+   u32int frame = frame_addr/PAGE_SIZE;
+   u32int idx = INDEX_FROM_BIT(frame);
+   u32int off = OFFSET_FROM_BIT(frame);
+   map[idx] &= ~(0x1 << off);
 }
 
 // Static function to clear a bit in the frames bitset
 static void clear_frame(u32int frame_addr)
 {
+  clear_frame_in_map(frame_addr,frames);
+}
+
+
+static u32int test_frame_in_map(u32int frame_addr,u32int *map)
+{
    u32int frame = frame_addr/PAGE_SIZE;
    u32int idx = INDEX_FROM_BIT(frame);
    u32int off = OFFSET_FROM_BIT(frame);
-   frames[idx] &= ~(0x1 << off);
+   return (map[idx] & (0x1 << off));
 }
 
 // Static function to test if a bit is set.
 static u32int test_frame(u32int frame_addr)
 {
-   u32int frame = frame_addr/PAGE_SIZE;
-   u32int idx = INDEX_FROM_BIT(frame);
-   u32int off = OFFSET_FROM_BIT(frame);
-   return (frames[idx] & (0x1 << off));
+  return test_frame_in_map(frame_addr,frames);
 }
 
 // Static function to find the first free frame.
@@ -60,7 +82,7 @@ static u32int first_frame()
            for (j = 0; j < 32; j++)
            {
                u32int toTest = 0x1 << j;
-               if ( !(frames[i]&toTest) )
+               if ( !(frames[i]&toTest) && !(memory_map[i]&toTest))
                {
                    return i*4*8+j;
                }
@@ -69,6 +91,7 @@ static u32int first_frame()
    }
    return -1;
 } 
+
 
 void alloc_frame(page_t *page, int is_kernel, int is_writeable)
 {
@@ -161,14 +184,50 @@ page_directory_t *clone_directory(page_directory_t *src)
 
 void initialize_paging()
 {
-  // assuming for now that we have 16M of memory - we'll fix this
-  u32int mem_end_page = 0x1000000;
+  // we have memory up to 7FF0000
+  u32int mem_end_page = 0x7FEF000;                        
+  // let's take a look at what the memory map we're given looks like
+  multiboot_mmap_entry_t *entry = mboot_header->mmap_addr;
+  multiboot_mmap_entry_t *next_entry = 0;
+  u32int mmap_entries = mboot_header->mmap_length/sizeof(multiboot_mmap_entry_t);
+  monitor_write_hex(mmap_entries);
+  monitor_write(" memory map entries\n");
 
-  // number of page frames == memory / page frame size
-  nframes = mem_end_page / PAGE_SIZE;
+  monitor_write("Memory map from ");
+  monitor_write_hex((u32int)(mboot_header->mmap_addr));
+  monitor_write(" to ");
+  monitor_write_hex((u32int)(mboot_header->mmap_addr) + mboot_header->mmap_length);
+  monitor_write("\n");
+
+  //  while(entry < mboot_header->mmap_addr + mboot_header->mmap_length) {
+  for(u32int i = 0; i < mmap_entries; ++i) {
+
+    next_entry = (multiboot_mmap_entry_t*)(mboot_header->mmap_addr+i);
+    entry = next_entry;
+
+    monitor_write("Memory area from ");
+    //    monitor_write_hex(area->base_addr_high);
+    monitor_write_hex(entry->base_addr);
+    //    monitor_write("\n");
+    monitor_write("\tto ");
+    //    monitor_write_hex(area->length_high);
+    monitor_write_hex(entry->base_addr + entry->length);
+    monitor_write(" type ");
+    monitor_write_hex(entry->type);
+    monitor_write("\n");
+    nframes += entry->length / PAGE_SIZE;
+  }
+  monitor_write_hex(nframes);
+  monitor_write(" page frames\n");
+  //  PANIC("finished dumping memory map");
+    // number of page frames == memory / page frame size
+  //  nframes = mem_end_page / PAGE_SIZE;
   // allocate the page frame bitmap
   frames = (u32int*)kmalloc(INDEX_FROM_BIT(nframes));
+  // allocate the memory map
+  memory_map =  (u32int*)kmalloc(INDEX_FROM_BIT(nframes));
   memset(frames,0,INDEX_FROM_BIT(nframes));
+  memset(memory_map,0,INDEX_FROM_BIT(nframes));
 
   // allocate a page directory
   kernel_directory = (page_directory_t*)kmalloc_a(sizeof(page_directory_t));
@@ -181,6 +240,17 @@ void initialize_paging()
   for(i = KHEAP_START; i < KHEAP_START+KHEAP_INITIAL_SIZE; i += PAGE_SIZE) {
     page = get_page(i,1,kernel_directory);
   } 
+
+  // walk the multiboot memory map again to fence off MMIO space
+  for(i = 0; i < mmap_entries; ++i) {
+    entry = (multiboot_mmap_entry_t*)(mboot_header->mmap_addr+i);
+      if(entry->type != 0x1) {
+	for(u32int j = entry->base_addr; j < entry->length; j += PAGE_SIZE) {
+	  u32int frame = j / PAGE_SIZE;
+	  set_frame_in_map(j,memory_map);
+	}
+      }
+  }
   
   // identity map all of the memory we've allocated so far
   // so we can use it once we've enabled paging

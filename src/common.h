@@ -2,6 +2,8 @@
 #define _COMMON_H_
 
 /* of course, these are for 32-bit x86. */
+typedef unsigned   long long u64int;
+typedef            long long s64int;
 typedef unsigned   int u32int;
 typedef            int s32int;
 typedef unsigned short u16int;
